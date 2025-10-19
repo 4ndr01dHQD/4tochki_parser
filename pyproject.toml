@@ -1,5 +1,5 @@
 [project]
-name = "terminal-parser"
+name = "fortochki-parser"
 version = "0.1.0"
 description = ""
 authors = [
@@ -12,7 +12,11 @@ dependencies = [
     "structlog (>=25.4.0,<26.0.0)",
     "python-decouple (>=3.8,<4.0)",
     "redis (>=6.4.0,<7.0.0)",
-    "requests (>=2.32.5,<3.0.0)"
+    "requests (>=2.32.5,<3.0.0)",
+    "pydantic (>=2.12.3,<3.0.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "pymysql (>=1.1.2,<2.0.0)",
+    "beautifulsoup4 (>=4.14.3,<5.0.0)"
 ]
 
 [build-system]
