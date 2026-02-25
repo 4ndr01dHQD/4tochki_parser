@@ -2,7 +2,7 @@ import re
 import time
 from logging import Logger
 
-from config import TERMINAL_URL, DEBUG
+from config import FORTOCHKI_URL, DEBUG
 from telegram.api import TelegramAPI
 from telegram.schemas import TyreMessageSchema, TyreMessageType
 
@@ -58,7 +58,7 @@ class TelegramService:
                 f"*Цена*: {tyre['price']}\n"
                 f"*Сток*: {tyre['rest']}\n"
                 f"\n"
-                f"[Ссылка]({TERMINAL_URL}/app/#/detail/{tyre['productId']}/)"
+                f"[Ссылка]({FORTOCHKI_URL}/app/#/detail/{tyre['productId']}/)" #TODO: исправить!!!!!!!!!!
                 )
         if tyre_message.type == TyreMessageType.quantity_changed:
             text = "*Изменение количества ‼*\n\n" + text

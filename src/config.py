@@ -7,6 +7,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEBUG = config('DEBUG', False, cast=bool)
 FORTOCHKI_LOGIN = config('FORTOCHKI_LOGIN')
 FORTOCHKI_PASSWORD = config('FORTOCHKI_PASSWORD')
+FORTOCHKI_TOKEN = config('FORTOCHKI_TOKEN')
 
 TELEGRAM_TOKEN = config('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID')

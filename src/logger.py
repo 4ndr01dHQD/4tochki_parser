@@ -35,5 +35,5 @@ def get_logger(name: str) -> Logger:
     return log
 
 
-logger = get_logger(name='terminal-parser')
+logger = get_logger(name='fortochki-parser')
 logger.info("Logging initialized successfully")

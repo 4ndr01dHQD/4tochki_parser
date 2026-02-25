@@ -1,19 +1,22 @@
+import os
 import time
 from io import BytesIO
 from logging import Logger
 from typing import List, Dict
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from redis import Redis
 
+from config import FORTOCHKI_TOKEN
 from db.filter.repository import FilterSQLAlchemyModelRepository
 from parser.model import FilterDomain
+from parser.utils import is_price_relevant
 from telegram.schemas import TyreMessageType, TyreMessageSchema
 from fortochki.client import FortochkiApiClient
 from fortochki.exceptions import UnsuccessfullySeriesOfRequests
 
 
-class TerminalParser:
+class FortochkiParser:
     redis: Redis
     repository: FilterSQLAlchemyModelRepository
     PAGESIZE = 40
@@ -29,7 +32,7 @@ class TerminalParser:
         self.logger.info('Starting terminal parser')
 
         try:
-            #         self.auth()
+            self.auth()
             while True:
                 filters = self.get_filters()
                 for filter in filters:
@@ -39,13 +42,11 @@ class TerminalParser:
                         #                         self.logger.info(f'Token has been expired. Run reauth.')
                         #                         self.logout()
                         #                         self.auth()
-                        params = self._make_catalog_page_params(page_num, filter)
                         tyres = None
                         try:
+                            params = self._make_catalog_page_params(page_num, filter)
                             response = self.client.get_catalog_page(params)
-        #                         if response.status_code == 204:
-        #                             page_num += 1
-        #                             continue
+
                             soup = BeautifulSoup(response.text, 'html.parser')
 
                             tyres = self.get_tyres(soup)
@@ -78,8 +79,9 @@ class TerminalParser:
                 "error": err,
             })
 
-    #
-    # def auth(self):
+
+    def auth(self):
+        token = FORTOCHKI_TOKEN
     #     cached_token = self.redis.get(f"TerminalToken:{TERMINAL_LOGIN}")
     #     if cached_token:
     #         self.logger.info('token has been found in redis.')
@@ -89,7 +91,7 @@ class TerminalParser:
     #         data = self.client.auth(TERMINAL_LOGIN, TERMINAL_PASSWORD)
     #         self.redis.set(f"TerminalToken:{TERMINAL_LOGIN}", data['accessToken'], ex=60 * 60 * 6)
     #         token = data['accessToken']
-    #     self.client.set_token(token=token)
+        self.client.set_token(token=token)
     #
     # @property
     # def is_active_token(self):
@@ -100,37 +102,40 @@ class TerminalParser:
     #         self.client.logout()
     #         self.redis.delete(f"TerminalToken:{TERMINAL_LOGIN}")
     #
-    def process_tyres(self, tyres: List[Dict], filter: FilterDomain):
+    def process_tyres(self, tyres: List[Tag], filter: FilterDomain):
         self.logger.info(f'Process tyres.', length=len(tyres))
 
         for tyre in tyres:
-            price = tyre.find("tr:nth-of-type(1) td:nth-of-type(6) span")
-    #         if filter.run_flat is not None and tyre['runFlat'] is not None and filter.run_flat != tyre['runFlat']:
-    #             continue
-    #         self.set_tyre(tyre)
-    #
+            price = tyre.select_one("tr td:nth-of-type(6) span").get_text(strip=True)
+            if price is not None:
+                price = int(price.replace(' ', ''))
+                if not is_price_relevant(price, filter):
+                    continue
+
+            self.set_tyre(tyre)
+
     def get_filters(self) -> List[FilterDomain]:
         return self.repository.all()
 
-    #
-    # def set_tyre(self, tyre: dict) -> None:
-    #     cached_quantity = self.redis.get(f"terminal:tyre:{tyre['productId']}")
-    #
-    #     if cached_quantity is not None and int(cached_quantity) == int(tyre['rest']):
-    #         return
-    #
-    #     message_type = TyreMessageType.default if cached_quantity is None or int(cached_quantity) == int(
-    #         tyre['rest']) else TyreMessageType.quantity_changed
-    #
-    #     self.storage["tyres"].append(
-    #         TyreMessageSchema(
-    #             data=tyre,  # TODO вынести в pydantic
-    #             image=self.get_image(tyre),
-    #             type=message_type
-    #         )
-    #     )
-    #     self.redis.set(f"terminal:tyre:{tyre['productId']}", tyre['rest'], ex=60 * 60 * 12)
-    #
+
+    def set_tyre(self, tyre: dict) -> None:
+        cached_quantity = self.redis.get(f"fortochki:tyre:{tyre['productId']}")
+
+        if cached_quantity is not None and int(cached_quantity) == int(tyre['rest']):
+            return
+
+        message_type = TyreMessageType.default if cached_quantity is None or int(cached_quantity) == int(
+            tyre['rest']) else TyreMessageType.quantity_changed
+
+        self.storage["tyres"].append(
+            TyreMessageSchema(
+                data=tyre,  # TODO вынести в pydantic
+                image=self.get_image(tyre),
+                type=message_type
+            )
+        )
+        self.redis.set(f"fortochki:tyre:{tyre['productId']}", tyre['rest'], ex=60 * 60 * 12)
+
     # def get_image(self, tyre: dict) -> BytesIO:
     #     image = f"/storage/{tyre['productId']}/md.jpg"
     #     photo_url = f"{IMAGE_URL}{image}"
@@ -142,47 +147,32 @@ class TerminalParser:
             "kpt": "1",
             "fc_pst": "1",
             "cmpx": "0",
-            "ft_do": "",
-            "ft_w": "",
-            "ft_h": "",
-            "ft_d": "",
-            "ft_s": "",
-            "fc_b": "",
-            "ft_spw2": "",
-            "ft_sph2": "",
-            "ft_spd2": "",
-            "fc_c": "",
-            "fc_vc": "",
             "ft_p": "0",
             "ft_st": "0",
-            "fc_mq": "",
             "fc_uaid": "41243",
-            "fc_wh": "2156",
             "fc_whg": "2",
-            "fc_sno": "",
             "fc_zwid": "1418",
-            "ft_fs": ""
         }
 
-        if filter_obj.width:
+        if filter_obj.width is not None:
             params['ft_w'] = filter_obj.width
 
-        if filter_obj.height:
+        if filter_obj.height is not None:
             params['ft_h'] = filter_obj.height
 
-        if filter_obj.diametr:
+        if filter_obj.diametr is not None:
             params['ft_d'] = filter_obj.diametr
 
-        if filter_obj.season:
+        if filter_obj.season is not None:
             params['ft_s'] = filter_obj.season
 
-        if filter_obj.brand:
+        if filter_obj.brand is not None:
             params['fc_b'] = filter_obj.brand
 
-        if filter_obj.code:
+        if filter_obj.code is not None:
             params['fc_vc'] = filter_obj.code
 
-        if filter_obj.cae:
+        if filter_obj.cae is not None:
             params['fc_c'] = filter_obj.cae
 
         return params

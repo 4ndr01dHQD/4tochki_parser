@@ -35,9 +35,11 @@ class FortochkiApiClient:
     #     }
     #     response = self.__session.post(f"{self.URL}/api/Auth/login", json=body)
     #     return response
-    #
-    # def set_token(self, token: str):
-    #     self.__session.headers.update({"Authorization": f"Bearer {token}"})
+
+    def set_token(self, token: str):
+        self.__session.headers.update({
+            "Cookie":f"ASP.NET_SessionId={token};",
+        })
     #
     # @retry_error_request
     # def logout(self):
@@ -48,9 +50,9 @@ class FortochkiApiClient:
 
     @retry_error_request
     def get_catalog_page(self, data: dict):
-        response = self.__session.get(f"{self.URL}/Product/Tire", params=data)
+        response = self.__session.get(f"{self.URL}/Product/Tire?kpt=1&fc_pst=1&cmpx=0&ft_w=205&ft_h=60&ft_s=2&ft_p=0&ft_st=0&fc_uaid=41243&fc_wh=1418&fc_wh=232&fc_wh=2184&fc_wh=1222&fc_whg=2&fc_wh=2156&fc_zwid=1418")
         return response
-
+#TODO: ПОЗЖЕ ИСПРАВИТЬ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     # def get_image(self, photo_url: str) -> BytesIO:
     #     remote_image = self.__session.get(photo_url)
